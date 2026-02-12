@@ -149,7 +149,8 @@ export function useAccessLog(event: H3Event) {
     longitude: Number(cf?.longitude || getHeader(event, 'cf-iplongitude') || 0),
   }
 
-  if (process.env.NODE_ENV === 'production') {
+  // Write to Analytics Engine if the binding is available
+  if (env.ANALYTICS) {
     return env.ANALYTICS.writeDataPoint({
       indexes: [link.id], // only one index
       blobs: logs2blobs(accessLogs),
@@ -157,6 +158,7 @@ export function useAccessLog(event: H3Event) {
     })
   }
 
+  // Development/local mode - just log to console
   console.log('access logs:', accessLogs, logs2blobs(accessLogs), logs2doubles(accessLogs), { ...blobs2logs(logs2blobs(accessLogs)), ...doubles2logs(logs2doubles(accessLogs)) })
   return Promise.resolve()
 }

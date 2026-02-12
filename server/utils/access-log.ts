@@ -92,7 +92,7 @@ export function doubles2logs(doubles: number[]) {
   }, {} as Partial<LogsMap>)
 }
 
-export function useAccessLog(event: H3Event) {
+export async function useAccessLog(event: H3Event) {
   const ip = getHeader(event, 'cf-connecting-ip') || getHeader(event, 'x-real-ip') || getRequestIP(event, { xForwardedFor: true })
 
   const { host: referer } = parseURL(getHeader(event, 'referer'))
@@ -150,15 +150,26 @@ export function useAccessLog(event: H3Event) {
   }
 
   // Write to Analytics Engine if the binding is available
+  console.log('[Analytics] Checking ANALYTICS binding:', !!env.ANALYTICS)
   if (env.ANALYTICS) {
-    return env.ANALYTICS.writeDataPoint({
-      indexes: [link.id], // only one index
-      blobs: logs2blobs(accessLogs),
-      doubles: logs2doubles(accessLogs),
-    })
+    console.log('[Analytics] Writing data point for link:', link.id)
+    try {
+      const result = await env.ANALYTICS.writeDataPoint({
+        indexes: [link.id], // only one index
+        blobs: logs2blobs(accessLogs),
+        doubles: logs2doubles(accessLogs),
+      })
+      console.log('[Analytics] Write successful:', result)
+      return result
+    }
+    catch (error) {
+      console.error('[Analytics] Write failed:', error)
+      throw error
+    }
   }
 
   // Development/local mode - just log to console
+  console.log('[Analytics] No ANALYTICS binding - development mode')
   console.log('access logs:', accessLogs, logs2blobs(accessLogs), logs2doubles(accessLogs), { ...blobs2logs(logs2blobs(accessLogs)), ...doubles2logs(logs2doubles(accessLogs)) })
   return Promise.resolve()
 }
